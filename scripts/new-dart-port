@@ -1,0 +1,169 @@
+#!/bin/bash
+set -e
+
+PRESETS_DIR="scripts/dart-presets"
+BASE_CONFIG="$PRESETS_DIR/base.x86_64/config"
+
+# Step 1: Ask to flush kernel source
+dialog --backtitle "Dart Kernel Target Generator" --title "Flush Kernel Source" \
+       --yesno "To configure everything, I need to flush the kernel source.\nContinue?" 7 50
+
+response=$?
+clear
+if [ $response -ne 0 ]; then
+    echo "[!] Flushing skipped, not continuing..."
+    exit 1
+else
+    dialog --backtitle "Dart Kernel Target Generator" --title "Flushing Kernel Source" \
+           --prgbox "[*] make mrproper" "make mrproper" 15 50
+fi
+
+# Step 2: Ask codename
+CODENAME=$(dialog --backtitle "Dart Kernel Target Generator" --title "Target Codename" \
+    --inputbox "Enter a short target codename (e.g. foo):" 8 40 \
+    3>&1 1>&2 2>&3)
+[ $? -ne 0 ] && { clear; echo "[!] Cancelled"; exit 1; }
+
+CODENAME=$(echo "$CODENAME" | tr -cd '[:alnum:]_-')
+if [ -z "$CODENAME" ]; then
+    clear
+    echo "[!] Invalid codename."
+    exit 1
+fi
+
+# Step 3: Ask full name
+FULLNAME=$(dialog --backtitle "Dart Kernel Target Generator" --title "Full Device Name" \
+    --inputbox "Enter full name (e.g. FooBoard64):" 8 40 \
+    3>&1 1>&2 2>&3)
+[ $? -ne 0 ] && { clear; echo "[!] Cancelled"; exit 1; }
+
+# Step 4: Select architecture
+_ARCH=$(dialog --backtitle "Dart Kernel Target Generator" --title "Architecture" \
+    --menu "Select target architecture:" 10 40 3 \
+    x86_64 "64-bit x86" \
+    3>&1 1>&2 2>&3)
+[ $? -ne 0 ] && { clear; echo "[!] Cancelled"; exit 1; }
+
+# Step 5: Copy base config
+if [ "$ARCH" = "x86_64" ]; then
+    if [ ! -f "$BASE_CONFIG" ]; then
+        clear
+        echo "[!] Base config missing: $BASE_CONFIG"
+        exit 1
+    fi
+    cp "$BASE_CONFIG" ".config"
+fi
+
+# Step 6: Ask about Git module
+dialog --backtitle "Dart Kernel Target Generator" --title "Git Module" \
+       --yesno "Would you like your target directory to be prepared as a Git module?" 7 50
+response=$?
+if [ $response -eq 0 ]; then
+    IN_GIT="y"
+else
+    IN_GIT="n"
+fi
+
+clear
+
+# Export env vars for later use
+export CODENAME
+export FULLNAME
+export _ARCH
+export IN_GIT
+
+logg() {
+	echo "[*] $*"
+}
+
+# Start menuconfig
+sleep 0.13
+logg " Dart Kernel Target Generator 1.00"
+logg " Script by Saverio Karol Bizzoco (@sasyyy112)"
+logg "=============================================="
+logg "Starting Kconfig menu... (Make sure your terminal is bigger than 80x15)"
+logg "make menuconfig"
+if ! make menuconfig; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+
+# Start port design
+logg "Creating port directory..."
+DEST="$PRESETS_DIR/${CODENAME}.${_ARCH}"
+if ! mkdir "$DEST"; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "Creating new config..."
+if ! cp .config "$DEST/config"; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "Creating fullname..."
+echo "$FULLNAME" > "$DEST/fullname"
+if test $? -ne 0; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "Creating autobuild.sh..."
+if ! cp "$PRESETS_DIR/base.${_ARCH}/autobuild.sh" "$DEST"; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 1
+logg "=============================================="
+logg "Usually, you need to edit autoconf.sh to include other"
+logg "Makefile rules, for example: modules (builds modules only)"
+logg "The base autoconf.sh now targets these three rules:"
+logg "  all, bzImage, vmlinux"
+logg "=============================================="
+sleep 2
+if test "$IN_GIT" = "y"; then
+logg "Git: Entering into directory: $DEST"
+cd $DEST
+if test $? -ne 0; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.13
+logg "Git: Initializing..."
+git init 2>/dev/null
+if test $? -ne 0; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "Git: Adding files..."
+git add .
+if test $? -ne 0; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "Git: Committing files..."
+git commit -m "$FULLNAME Dart Kernel Port"
+if test $? -ne 0; then
+    echo "Did an error occured? If yes, report at:"
+    echo "https://github.com/Dart-Linux"
+    exit 1
+fi
+sleep 0.5
+logg "=============================================="
+logg "This Git module/repo is ready to be uploaded by"
+logg "configuring origin to your existing repo and pushing."
+logg "=============================================="
+fi # IN_GIT
+logg "Generation successful! Directory is:"
+logg " | $DEST"

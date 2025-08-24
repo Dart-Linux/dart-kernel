@@ -14,4 +14,8 @@ It is required the package "dialog", you can install it:
  On Arch:
   $ sudo pacman -S dialog
 
-Coming soon: Auto-Builder Port Creation
+To invoke the new Dart Kernel Port Generator, run:
+ $ scripts/new-dart-port
+
+It is required the same "dialog" package from before, and also
+"git" for generating git modules.
