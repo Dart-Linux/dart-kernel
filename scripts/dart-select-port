@@ -1,0 +1,63 @@
+#!/bin/bash
+
+PRESETS_DIR="scripts/dart-presets"
+
+# Step 1: Build menu options from directories and fullname files
+OPTIONS=()
+for d in "$PRESETS_DIR"/*; do
+    [ -d "$d" ] || continue
+    target=$(basename "$d")
+    fullname_file="$d/fullname"
+
+    if [ -f "$fullname_file" ]; then
+        fullname=$(<"$fullname_file")  # Use command substitution for better performance
+    else
+        fullname="$target"
+    fi
+
+    OPTIONS+=("$target" "$fullname")
+done
+
+# Check if OPTIONS has at least one target
+if [ ${#OPTIONS[@]} -eq 0 ]; then
+    echo "No targets found in $PRESETS_DIR. Aborting."
+    exit 1
+fi
+
+# Step 2: Ask user to select a target
+TARGET=$(dialog --backtitle "Dart Kernel Auto-Builder" --title "Select Target" \
+                         --menu "Choose target and architecture:" 10 50 0 \
+                         "${OPTIONS[@]}" 2>&1 >/dev/tty)
+clear
+
+if [ -z "$TARGET" ]; then
+    echo "No target selected. Aborting."
+    exit 1
+fi
+
+TARGET_DIR="$PRESETS_DIR/$TARGET"
+dialog --backtitle "Dart Kernel Auto-Builder" --title "Choices" --msgbox "Selected target: $TARGET\nTarget directory: $TARGET_DIR" 7 50
+
+# Step 3: Ask to flush kernel source
+dialog --backtitle "Dart Kernel Auto-Builder" --title "Flush Kernel Source" \
+       --yesno "To configure everything, I need to flush everything from the kernel source.\nContinue?" 7 50
+
+response=$?
+clear
+if [ $response -ne 0 ]; then
+    echo "WARNING: Flushing skipped, continuing without flush..."
+else
+    # Step 3.1: Run make mrproper in-place with live log
+    dialog --backtitle "Dart Kernel Auto-Builder" --title "Flushing Kernel Source" --prgbox "[*] make mrproper" "make mrproper" 15 50
+fi
+
+# Step 4: Run the autobuild script
+AUTOBUILD="$TARGET_DIR/autobuild.sh"
+if [ -x "$AUTOBUILD" ]; then
+    echo "[*] $AUTOBUILD"
+    bash "$AUTOBUILD"
+else
+    clear
+    echo "Autobuild script not found or not executable: $AUTOBUILD"
+    exit 1  # Exit with an error code
+fi

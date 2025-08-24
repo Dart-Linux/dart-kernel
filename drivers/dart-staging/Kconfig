@@ -1,0 +1,24 @@
+menuconfig DART_STAGING
+	bool "Dart Kernel Community Modules (Read my help FIRST)"
+	help
+          If you want to enable Community Modules, say Y.
+
+	  To contribute a driver, ask into the Discord server or
+	  make a pull request and wait to be accepted.
+
+	  Note: Make sure you modify my Kconfig at drivers/dart-staging and
+	  include your Kconfig!
+
+	  === Tag Glossary ===
+	   Problematic:        Driver is messed up and not fully tested yet (not recommended selecting)
+	   Deprecated:         Driver will be going to be removed the next few commits (good fricking luck)
+
+	  Kconfig by Saverio Karol Bizzoco (@sasyyy112)
+
+if DART_STAGING
+# Include your Kconfig here
+# e.g.  source "drivers/dart-staging/foo/Kconfig"
+
+comment "Last Commit Date: 2025/08/24, Drivers: 0"
+
+endif # DART_STAGING
