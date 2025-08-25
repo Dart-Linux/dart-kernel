@@ -1,8 +1,6 @@
 #!/bin/bash
-set -e
 
 PRESETS_DIR="scripts/dart-presets"
-BASE_CONFIG="$PRESETS_DIR/base.x86_64/config"
 
 # Step 1: Ask to flush kernel source
 dialog --backtitle "Dart Kernel Target Generator" --title "Flush Kernel Source" \
@@ -41,18 +39,18 @@ FULLNAME=$(dialog --backtitle "Dart Kernel Target Generator" --title "Full Devic
 _ARCH=$(dialog --backtitle "Dart Kernel Target Generator" --title "Architecture" \
     --menu "Select target architecture:" 10 40 3 \
     x86_64 "64-bit x86" \
+    i686   "32-bit x86" \
     3>&1 1>&2 2>&3)
 [ $? -ne 0 ] && { clear; echo "[!] Cancelled"; exit 1; }
 
 # Step 5: Copy base config
-if [ "$ARCH" = "x86_64" ]; then
-    if [ ! -f "$BASE_CONFIG" ]; then
-        clear
-        echo "[!] Base config missing: $BASE_CONFIG"
-        exit 1
-    fi
-    cp "$BASE_CONFIG" ".config"
+BASE_CONFIG="$PRESETS_DIR/base.${_ARCH}/config"
+if ! test -f "$BASE_CONFIG"; then
+    clear
+    echo "Base config missing: $BASE_CONFIG"
+    exit 1
 fi
+cp "$BASE_CONFIG" ".config"
 
 # Step 6: Ask about Git module
 dialog --backtitle "Dart Kernel Target Generator" --title "Git Module" \
